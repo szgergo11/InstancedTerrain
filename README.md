@@ -1,1 +1,1 @@
-# instancedterrain
+# InstancedTerrain
