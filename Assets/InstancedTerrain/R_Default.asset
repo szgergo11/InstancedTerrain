@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de640fe3d0db1804a85f9fc8f5cadab6, type: 3}
+  m_Name: R_Default
+  m_EditorClassIdentifier: 
+  m_RendererFeatures:
+  - {fileID: 8702820500659538812}
+  m_RendererFeatureMap: 7c8bccc522a1c678
+  postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
+  xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
+  shaders:
+    blitPS: {fileID: 4800000, guid: c17132b1f77d20942aa75f8429c0f8bc, type: 3}
+    copyDepthPS: {fileID: 4800000, guid: d6dae50ee9e1bfa4db75f19f99355220, type: 3}
+    screenSpaceShadowPS: {fileID: 4800000, guid: 0f854b35a0cf61a429bd5dcfea30eddd, type: 3}
+    samplingPS: {fileID: 4800000, guid: 04c410c9937594faa893a11dceb85f7e, type: 3}
+    tileDepthInfoPS: {fileID: 0}
+    tileDeferredPS: {fileID: 0}
+    stencilDeferredPS: {fileID: 4800000, guid: e9155b26e1bc55942a41e518703fe304, type: 3}
+    fallbackErrorPS: {fileID: 4800000, guid: e6e9a19c3678ded42a3bc431ebef7dbd, type: 3}
+    materialErrorPS: {fileID: 4800000, guid: 5fd9a8feb75a4b5894c241777f519d4e, type: 3}
+  m_OpaqueLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_TransparentLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_DefaultStencilState:
+    overrideStencilState: 0
+    stencilReference: 0
+    stencilCompareFunction: 8
+    passOperation: 2
+    failOperation: 0
+    zFailOperation: 0
+  m_ShadowTransparentReceive: 1
+  m_RenderingMode: 0
+  m_AccurateGbufferNormals: 0
+--- !u!114 &8702820500659538812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ffed3b99ea5cba449dfcd02724d37c4, type: 3}
+  m_Name: NewHiZAndFrustumCullingRendererFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  hizBufferGeneration_Shader: {fileID: 4800000, guid: e3d8a4933adaf8a45a7a7c091ebada99, type: 3}
+  CELLFrustumCulling_CS: {fileID: 7200000, guid: 3f10a04e8676a6d45a777613801a4dd8, type: 3}
+  intersectedCells_CS: {fileID: 7200000, guid: 2af9cd203209e554c8e2eaaf8c0aeae3, type: 3}
+  fullyVisibleCells_CS: {fileID: 7200000, guid: 790a3313efb1ed245b36430b59a4615c, type: 3}
+  createCheckRanges_CS: {fileID: 7200000, guid: c9fb334bd5a2f6e46856282b9f590662, type: 3}
+  hiZCulling_CS: {fileID: 7200000, guid: 6021981c98295d34aa205cca3f5575b5, type: 3}
+  clearArgsBuffers_CS: {fileID: 7200000, guid: f8de42442ca81924bb54394bc689fbe4, type: 3}
+  divideArgsBuffers_CS: {fileID: 7200000, guid: 4b301ebcf97b5b04d80761a060456ce0, type: 3}
+  noCull: 1

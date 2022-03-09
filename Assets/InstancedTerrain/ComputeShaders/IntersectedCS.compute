@@ -1,0 +1,124 @@
+#include "Assets/InstancedTerrain/AdditionalHLSL/MatrixOperations.hlsl"
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+float3 _TerrainElementBoundsExtents;
+float4 _FrustumPlanes[6];
+
+// (start idx, count of all before and current)
+StructuredBuffer<uint2> _CheckRanges;
+Buffer<uint> _CheckRangesCounts_Intersected_FullyVisible;
+StructuredBuffer<float4x4> _TerrainElementMatricesInCellOrderFlat;
+// Value at index 4 contains the full count of positions in the checkranges
+Buffer<uint> _DispatchArgs;
+
+AppendStructuredBuffer<uint> _FrustumCullingResultIndexes;
+RWBuffer<uint> _OcclusionDispatchArgs;
+
+
+// 0 - Outside
+// 1 - Intersected
+// 2 - Inside
+uint InsideFrustum(float3 boundsMin, float3 boundsMax)
+{
+	float3 vmin;
+	float3 vmax;
+	uint result = 2;
+
+	for (uint i = 0; i < 6; i++)
+	{
+		float4 p = _FrustumPlanes[i];
+		// x
+		if (p.x < 0)
+		{
+			vmin.x = boundsMin.x;
+			vmax.x = boundsMax.x;
+		}
+		else
+		{
+			vmin.x = boundsMax.x;
+			vmax.x = boundsMin.x;
+		}
+
+		// y
+		if (p.y < 0)
+		{
+			vmin.y = boundsMin.y;
+			vmax.y = boundsMax.y;
+		}
+		else
+		{
+			vmin.y = boundsMax.y;
+			vmax.y = boundsMin.y;
+		}
+
+		// z
+		if (p.z < 0)
+		{
+			vmin.z = boundsMin.z;
+			vmax.z = boundsMax.z;
+		}
+		else
+		{
+			vmin.z = boundsMax.z;
+			vmax.z = boundsMin.z;
+		}
+
+		// Outside
+		float dot1 = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z;
+		if (dot1 + p.w < 0)
+			result = 0;
+
+		// Intersection
+		float dot2 = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z;
+		if (dot2 + p.w <= 0)
+			result = result == 0 ? 0 : 1;
+
+	}
+
+	return result;
+}
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint size = _CheckRangesCounts_Intersected_FullyVisible[0];
+	if (size == 0)
+		return;
+
+	if (id.x >= _DispatchArgs[3])
+		return;
+
+	// _CheckRanges is in a random order
+	uint i;
+	uint2 maxLower_rangeIdx = uint2(0, size);	// uint maxvalue
+	uint current;
+	for (i = 0; i < size; i++)
+	{
+		// current = range sizes till that (not including self)
+		current = _CheckRanges[i].y;
+		maxLower_rangeIdx = id.x >= current && current >= maxLower_rangeIdx.x ? uint2(current, i) : maxLower_rangeIdx;
+	}
+	if (maxLower_rangeIdx.y == size)
+		return;
+
+	//uint countBeforeOnly = maxLower_rangeIdx.x
+	uint index = _CheckRanges[maxLower_rangeIdx.y].x + id.x - maxLower_rangeIdx.x;
+	float4x4 transformMatrix = _TerrainElementMatricesInCellOrderFlat[index];
+
+	float3 posWS = extract_translation(transformMatrix);
+	float3 extents = extract_scale(transformMatrix) * _TerrainElementBoundsExtents;
+
+	float3 boundsMin = posWS - extents;
+	float3 boundsMax = posWS + extents;
+
+	uint frustumTest = InsideFrustum(boundsMin, boundsMax);
+	
+	if (frustumTest == 0)
+		return;
+
+	// Its visible
+	_FrustumCullingResultIndexes.Append(index);
+	InterlockedAdd(_OcclusionDispatchArgs[0], 1);
+}

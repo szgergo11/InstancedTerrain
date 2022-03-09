@@ -1,0 +1,56 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+StructuredBuffer<uint> _IntersectedCellIndexes;
+StructuredBuffer<uint> _FullyVisibleCellIndexes;
+Buffer<uint> _CellIndexesCounts_Intersected_FullyVisible;
+
+StructuredBuffer<uint> _CellStartIndexes;
+StructuredBuffer<uint> _CellCounts;
+
+// (start, count till)
+AppendStructuredBuffer<uint2> _CheckRangesIntersected;
+AppendStructuredBuffer<uint2> _CheckRangesFullyVisible;
+
+RWBuffer<uint> _IntersectedDispatchArgs;
+RWBuffer<uint> _FullyVisibleDispatchArgs;
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	// TODO:
+	// TODO PRIO: LOW
+	// Avoid branching by splitting this into 2 3separate compute shaders
+	uint size0 = _CellIndexesCounts_Intersected_FullyVisible[0];
+	uint size1 = _CellIndexesCounts_Intersected_FullyVisible[1];
+	
+	size0 = id.x < size0 ? size0 : 0;
+	size1 = id.x < size1 ? size1 : 0;
+
+
+	uint i;
+	uint rangeSizes0 = 0;
+	for (i = 0; i < size0; i++)
+	{
+		rangeSizes0 += _IntersectedCellIndexes[i] < _IntersectedCellIndexes[id.x] ? _CellCounts[_IntersectedCellIndexes[i]] : 0;
+	}
+
+
+	uint rangeSizes1 = 0;
+	for (i = 0; i < size1; i++)
+	{
+		rangeSizes1 += _FullyVisibleCellIndexes[i] < _FullyVisibleCellIndexes[id.x] ? _CellCounts[_FullyVisibleCellIndexes[i]] : 0;
+	}
+
+	if (id.x < size0 && _CellCounts[_IntersectedCellIndexes[id.x]] != 0)
+	{
+		_CheckRangesIntersected.Append(uint2(_CellStartIndexes[_IntersectedCellIndexes[id.x]], rangeSizes0));
+		InterlockedAdd(_IntersectedDispatchArgs[0], _CellCounts[_IntersectedCellIndexes[id.x]]);
+	}
+
+	if (id.x < size1 && _CellCounts[_FullyVisibleCellIndexes[id.x]] != 0)
+	{
+		_CheckRangesFullyVisible.Append(uint2(_CellStartIndexes[_FullyVisibleCellIndexes[id.x]], rangeSizes1));
+		InterlockedAdd(_FullyVisibleDispatchArgs[0], _CellCounts[_FullyVisibleCellIndexes[id.x]]);
+	}
+}

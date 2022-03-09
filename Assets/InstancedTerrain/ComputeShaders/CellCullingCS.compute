@@ -1,0 +1,127 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+float4 _CellSize_MaxTeSizeXZ;
+
+uint _CellCount;
+
+// Planes
+// float4(normal.xyz, distance)
+float4 _FrustumPlanes[6];
+
+// (xyz: center position, w: extent on y)
+StructuredBuffer<float4> _CellData;
+
+AppendStructuredBuffer<uint> _IntersectedCellIndexes;
+AppendStructuredBuffer<uint> _FullyVisibleCellIndexes;
+
+
+// 0 - Outside
+// 1 - Intersected
+// 2 - Inside
+uint InsideFrustum(float3 boundsMin, float3 boundsMax)
+{
+	float3 vmin;
+	float3 vmax;
+	uint result = 2;
+
+	for (uint i = 0; i < 6; i++)
+	{
+		float4 p = _FrustumPlanes[i];
+		// x
+		if (p.x < 0)
+		{
+			vmin.x = boundsMin.x;
+			vmax.x = boundsMax.x;
+		}
+		else
+		{
+			vmin.x = boundsMax.x;
+			vmax.x = boundsMin.x;
+		}
+
+		// y
+		if (p.y < 0)
+		{
+			vmin.y = boundsMin.y;
+			vmax.y = boundsMax.y;
+		}
+		else
+		{
+			vmin.y = boundsMax.y;
+			vmax.y = boundsMin.y;
+		}
+
+		// z
+		if (p.z < 0)
+		{
+			vmin.z = boundsMin.z;
+			vmax.z = boundsMax.z;
+		}
+		else
+		{
+			vmin.z = boundsMax.z;
+			vmax.z = boundsMin.z;
+		}
+
+		// Outside
+		float dot1 = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z;
+		if (dot1 + p.w < 0)
+			result = 0;
+
+		// Intersection
+		float dot2 = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z;
+		if (dot2 + p.w <= 0)
+			result = result == 0 ? 0 : 1;
+
+	}
+
+	return result;
+}
+
+
+[numthreads(64, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= _CellCount)
+		return;
+
+	float4 ch = _CellData[id.x];
+	// For more precise culling make the cells slightly bigger
+	float3 boundsMin = float3(ch.x - 0.5 * (_CellSize_MaxTeSizeXZ.x + _CellSize_MaxTeSizeXZ.z), ch.y - ch.w, ch.z - 0.5 * (_CellSize_MaxTeSizeXZ.y + _CellSize_MaxTeSizeXZ.w));
+	float3 boundsMax = float3(boundsMin.x + 1.0 * _CellSize_MaxTeSizeXZ.x + _CellSize_MaxTeSizeXZ.z, boundsMin.y + 2.0 * ch.w, boundsMin.z + 1.0 * _CellSize_MaxTeSizeXZ.y + _CellSize_MaxTeSizeXZ.w);
+
+
+	uint frustumTest = InsideFrustum(boundsMin, boundsMax);
+
+	/*bool intersected = false;
+	bool fullyVisible = true;
+	float4 clipPos;
+	for (uint i = 0; i < 8; i++)
+	{
+		clipPos = mul(_VPMatrix, bBoxCorners[i]);
+		bool inside =
+			!(clipPos.z > clipPos.w
+				|| clipPos.x < -clipPos.w
+				|| clipPos.x > clipPos.w
+				|| clipPos.y < -clipPos.w
+				|| clipPos.y > clipPos.w
+				);
+		intersected = intersected || inside;
+		fullyVisible = fullyVisible && inside;
+	}
+	intersected = intersected && !fullyVisible;*/
+
+
+	if (frustumTest == 1)
+		_IntersectedCellIndexes.Append
+		(
+			id.x
+		);
+
+	if (frustumTest == 2)
+		_FullyVisibleCellIndexes.Append
+		(
+			id.x
+		);
+}

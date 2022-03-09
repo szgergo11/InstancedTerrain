@@ -1,0 +1,38 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+bool _DivideBuffer0;
+bool _DivideBuffer1;
+bool _DivideBuffer2;
+
+RWBuffer<uint> _CSArgsBuffer0;
+RWBuffer<uint> _CSArgsBuffer1;
+RWBuffer<uint> _CSArgsBuffer2;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (_DivideBuffer0)
+    {
+        _CSArgsBuffer0[3] = _CSArgsBuffer0[0];
+        _CSArgsBuffer0[0] = (uint)ceil(_CSArgsBuffer0[0] / 64.0);
+        if (_CSArgsBuffer0[0] == 0)
+            _CSArgsBuffer0[0] = 1;
+    }
+
+    if (_DivideBuffer1)
+    {
+        _CSArgsBuffer1[3] = _CSArgsBuffer1[0];
+        _CSArgsBuffer1[0] = (uint)ceil(_CSArgsBuffer1[0] / 64.0);
+        if (_CSArgsBuffer1[0] == 0)
+            _CSArgsBuffer1[0] = 1;
+    }
+
+    if (_DivideBuffer2)
+    {
+        _CSArgsBuffer2[3] = _CSArgsBuffer2[0];
+        _CSArgsBuffer2[0] = (uint)ceil(_CSArgsBuffer2[0] / 64.0);
+        if (_CSArgsBuffer2[0] == 0)
+            _CSArgsBuffer2[0] = 1;
+    }
+}

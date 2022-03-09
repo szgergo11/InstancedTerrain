@@ -1,0 +1,23 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+bool _ClearBuffer0;
+bool _ClearBuffer1;
+bool _ClearBuffer2;
+
+RWBuffer<uint> _CSArgsBuffer0;
+RWBuffer<uint> _CSArgsBuffer1;
+RWBuffer<uint> _CSArgsBuffer2;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if(_ClearBuffer0)
+        _CSArgsBuffer0[0] = 0;
+
+    if(_ClearBuffer1)
+        _CSArgsBuffer1[0] = 0;
+
+    if (_ClearBuffer2)
+        _CSArgsBuffer2[0] = 0;
+}

@@ -1,0 +1,99 @@
+#include "Assets/InstancedTerrain/AdditionalHLSL/MatrixOperations.hlsl"
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+
+float4x4 _VPMatrix;
+//float4x4 _VMatrix;
+float3 _TerrainElementBoundsExtents;
+
+StructuredBuffer<float4x4> _TerrainElementMatricesInCellOrderFlat;
+Buffer<uint> _FrustumResultCount;
+
+ConsumeStructuredBuffer<uint> _FrustumCullingResultIndexes;
+AppendStructuredBuffer<uint> _HiZBufferCullingResultIndexes;
+
+
+Texture2D<float4> _HiZBuffer;
+SamplerState sampler_HiZBuffer;
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint size0 = _FrustumResultCount[0];
+	if (id.x >= size0)
+		return;
+
+	uint index = _FrustumCullingResultIndexes.Consume();
+	float4x4 transformMatrix = _TerrainElementMatricesInCellOrderFlat[index];
+
+	float4 posWS = float4(extract_translation(transformMatrix), 1.0);
+	float3 extents = extract_scale(transformMatrix) * _TerrainElementBoundsExtents;
+
+	float4 boundsMin = float4(posWS.xyz - extents.xyz, posWS.w);
+	float4 boundsMax = float4(posWS.xyz + extents.xyz, posWS.w);
+
+	float4 bBoxCorners[8];
+	bBoxCorners[0] = float4(boundsMin.xyz, 1.0);
+	bBoxCorners[1] = float4(boundsMax.xyz, 1.0);
+
+	bBoxCorners[2] = float4(boundsMin.xy, boundsMax.z, 1.0);
+	bBoxCorners[3] = float4(boundsMax.xy, boundsMin.z, 1.0);
+
+	bBoxCorners[4] = float4(boundsMin.x, boundsMax.y, boundsMin.z, 1.0);
+	bBoxCorners[5] = float4(boundsMax.x, boundsMin.y, boundsMax.z, 1.0);
+
+	bBoxCorners[6] = float4(boundsMax.x, boundsMin.yz, 1.0);
+	bBoxCorners[7] = float4(boundsMin.x, boundsMax.yz, 1.0);
+
+	float4 tmpBBoxCornerCS = mul(_VPMatrix, bBoxCorners[0]);
+	tmpBBoxCornerCS = float4((tmpBBoxCornerCS.xyz * 0.5 + tmpBBoxCornerCS.w * 0.5) / tmpBBoxCornerCS.w, 1.0);
+
+	float ndsMinX = tmpBBoxCornerCS.x;
+	float ndsMinY = tmpBBoxCornerCS.y;
+	float ndsMaxX = tmpBBoxCornerCS.x;
+	float ndsMaxY = tmpBBoxCornerCS.y;
+	float ndsMinZ = tmpBBoxCornerCS.z;
+
+	for (int i = 1; i < 8; i++)
+	{
+		tmpBBoxCornerCS = mul(_VPMatrix, bBoxCorners[i]);
+		//tmpBBoxCornerCS.xyz = tmpBBoxCornerCS.xyz / tmpBBoxCornerCS.w;
+		tmpBBoxCornerCS = float4((tmpBBoxCornerCS.xyz / tmpBBoxCornerCS.w) * 0.5 + 0.5, 1.0);
+
+		ndsMinX = min(tmpBBoxCornerCS.x, ndsMinX);
+		ndsMaxX = max(tmpBBoxCornerCS.x, ndsMaxX);
+		ndsMinY = min(tmpBBoxCornerCS.y, ndsMinY);
+		ndsMaxY = max(tmpBBoxCornerCS.y, ndsMaxY);
+		ndsMinZ = min(tmpBBoxCornerCS.z, ndsMinZ);
+	}
+
+	// Min max positions on screen
+	// Clamp it (bounds positions could go out of the screen)
+	float2 minXYSS = float2(max(0, ndsMinX), max(0, ndsMinY));
+	float2 maxXYSS = float2(min(1, ndsMaxX), min(1, ndsMaxY));
+
+	float width, height;
+	_HiZBuffer.GetDimensions(width, height);
+
+	float2 diff = (maxXYSS - minXYSS);
+	float sSize = max(diff.x, diff.y) * width;
+	float mipLvl = floor(log2(sSize));
+	mipLvl = clamp(mipLvl, 0, log2(width));
+
+	// Get depth
+	float hizDepth = min(
+		min(_HiZBuffer.SampleLevel(sampler_HiZBuffer, minXYSS, mipLvl).r,
+			_HiZBuffer.SampleLevel(sampler_HiZBuffer, maxXYSS, mipLvl).r
+		),
+		min(_HiZBuffer.SampleLevel(sampler_HiZBuffer, float2(minXYSS.x, maxXYSS.y), mipLvl).r,
+			_HiZBuffer.SampleLevel(sampler_HiZBuffer, float2(maxXYSS.x, minXYSS.y), mipLvl).r
+		));
+
+	// Compare depths
+	if (!(hizDepth == 0 || (1.0 - ndsMinZ) >= hizDepth))
+		return;
+	
+	_HiZBufferCullingResultIndexes.Append(index);
+}

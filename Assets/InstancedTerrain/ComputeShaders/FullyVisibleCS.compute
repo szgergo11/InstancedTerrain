@@ -1,0 +1,41 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// (start idx, count of all before and current)
+StructuredBuffer<uint2> _CheckRanges;
+Buffer<uint> _CheckRangesCounts_Intersected_FullyVisible;
+// Value at index 4 contains the full count of positions in the checkranges
+Buffer<uint> _DispatchArgs;
+
+AppendStructuredBuffer<uint> _FrustumCullingResultIndexes;
+RWBuffer<uint> _OcclusionDispatchArgs;
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint size = _CheckRangesCounts_Intersected_FullyVisible[1];
+	if (size == 0)
+		return;
+
+	if (id.x >= _DispatchArgs[3])
+		return;
+
+	// _CheckRanges is in a random order
+	uint i;
+	uint2 maxLower_rangeIdx = uint2(0, size);
+	uint current;
+	for (i = 0; i < size; i++)
+	{
+		// current = range sizes till that (not including self)
+		current = _CheckRanges[i].y;
+		maxLower_rangeIdx = id.x >= current && current >= maxLower_rangeIdx.x ? uint2(current, i) : maxLower_rangeIdx;
+	}
+	if (maxLower_rangeIdx.y == size)
+		return;
+
+	//uint countBeforeOnly = maxLower_rangeIdx.x;
+	uint index = _CheckRanges[maxLower_rangeIdx.y].x + id.x - maxLower_rangeIdx.x;
+
+	_FrustumCullingResultIndexes.Append(index);
+	InterlockedAdd(_OcclusionDispatchArgs[0], 1);
+}

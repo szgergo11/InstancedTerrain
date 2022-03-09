@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 0ffed3b99ea5cba449dfcd02724d37c4
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - hizBufferGeneration_Shader: {fileID: 4800000, guid: e3d8a4933adaf8a45a7a7c091ebada99, type: 3}
+  - CELLFrustumCulling_CS: {fileID: 7200000, guid: 3f10a04e8676a6d45a777613801a4dd8, type: 3}
+  - intersectedCells_CS: {fileID: 7200000, guid: 2af9cd203209e554c8e2eaaf8c0aeae3, type: 3}
+  - fullyVisibleCells_CS: {fileID: 7200000, guid: 790a3313efb1ed245b36430b59a4615c, type: 3}
+  - createCheckRanges_CS: {fileID: 7200000, guid: c9fb334bd5a2f6e46856282b9f590662, type: 3}
+  - hiZCulling_CS: {fileID: 7200000, guid: 6021981c98295d34aa205cca3f5575b5, type: 3}
+  - clearArgsBuffers_CS: {fileID: 7200000, guid: f8de42442ca81924bb54394bc689fbe4, type: 3}
+  - divideArgsBuffers_CS: {fileID: 7200000, guid: 4b301ebcf97b5b04d80761a060456ce0, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
