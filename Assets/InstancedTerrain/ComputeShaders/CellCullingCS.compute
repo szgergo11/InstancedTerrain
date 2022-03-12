@@ -88,8 +88,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	float4 ch = _CellData[id.x];
 	// For more precise culling make the cells slightly bigger
-	float3 boundsMin = float3(ch.x - 0.5 * (_CellSize_MaxTeSizeXZ.x + _CellSize_MaxTeSizeXZ.z), ch.y - ch.w, ch.z - 0.5 * (_CellSize_MaxTeSizeXZ.y + _CellSize_MaxTeSizeXZ.w));
-	float3 boundsMax = float3(boundsMin.x + 1.0 * _CellSize_MaxTeSizeXZ.x + _CellSize_MaxTeSizeXZ.z, boundsMin.y + 2.0 * ch.w, boundsMin.z + 1.0 * _CellSize_MaxTeSizeXZ.y + _CellSize_MaxTeSizeXZ.w);
+	float3 boundsMin = float3(ch.x - 0.5 * (_CellSize_MaxTeSizeXZ.x + _CellSize_MaxTeSizeXZ.z),
+								ch.y - ch.w,
+								ch.z - 0.5 * (_CellSize_MaxTeSizeXZ.y + _CellSize_MaxTeSizeXZ.w));
+	float3 boundsMax = float3(boundsMin.x + 1.0 * _CellSize_MaxTeSizeXZ.x + _CellSize_MaxTeSizeXZ.z,
+								boundsMin.y + 2.0 * ch.w,
+								boundsMin.z + 1.0 * _CellSize_MaxTeSizeXZ.y + _CellSize_MaxTeSizeXZ.w);
 
 
 	uint frustumTest = InsideFrustum(boundsMin, boundsMax);

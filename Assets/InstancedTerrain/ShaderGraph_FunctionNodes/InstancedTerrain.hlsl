@@ -7,11 +7,7 @@
 StructuredBuffer<float4x4> _TEMatrices;
 StructuredBuffer<uint> _CullingResultIdxs;
 
-
 #if UNITY_ANY_INSTANCING_ENABLED
-#define unity_ObjectToWorld unity_ObjectToWorld
-#define unity_WorldToObject unity_WorldToObject
-
 void setMatrices(inout float4x4 objectToWorld, inout float4x4 worldToObject)
 {
     float4x4 matr = _TEMatrices[_CullingResultIdxs[unity_InstanceID]];
@@ -23,19 +19,13 @@ void setMatrices(inout float4x4 objectToWorld, inout float4x4 worldToObject)
 
 void setupInstancing()
 {
-	//#define unity_LODFade unity_LODFade
-    
     setMatrices(unity_ObjectToWorld, unity_WorldToObject);
 }
 #endif
 
-void IncludeDummy_float(in float3 IN, out float3 OUT)
+void FNodeDummy_float(in float3 IN, out float3 OUT)
 {
-#if UNITY_ANY_INSTANCING_ENABLED
-    OUT = IN;// +_TEPositions[_CullingResultIdxs[unity_InstanceID]];
-#else
-    OUT = IN + float3(2, 2, 2);
-#endif
+    OUT = IN;
 }
 
 #endif

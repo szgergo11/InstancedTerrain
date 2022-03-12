@@ -10,11 +10,11 @@ public class TerrainManagerData : ScriptableObject
     /// Cell centers, extent in y dir (x z cellsize is same)
     /// </summary>
     public List<Vector4> cellData = new List<Vector4>();
-    public List<int2> cellOrder = new List<int2>();
+    public List<int3> cellOrder = new List<int3>();
     public Vector2 maxTeSizeXZ;
 
-    [Min(0.5f)] public Vector2 cellSize;
-    [HideInInspector] private Vector2 lastCellSize;
+    [Min(0.5f)] public Vector3 cellSize;
+    [HideInInspector] private Vector3 lastCellSize;
 
     public bool changedCellSize = false;
 
@@ -38,25 +38,25 @@ public class TerrainManagerData : ScriptableObject
 
     }
 
-    // Lesz egy ilyen gomb
+
     public void GenerateCellData(List<InstancedTerrainDrawer> itds)
     {
         cellData.Clear();
         cellOrder.Clear();
         maxTeSizeXZ = Vector2.zero;
-        Dictionary<int2, float2> helperDict = new Dictionary<int2, float2>();
+        Dictionary<int3, float2> helperDict = new Dictionary<int3, float2>();
         // Using dictionary is faster
         foreach (var itd in itds)
         {
             var teSize = itd.terrainElementData.boundingBoxSize * itd.terrainElementData.boundingBoxSizeMultiplier;
             if (maxTeSizeXZ.x < teSize.x)
                 maxTeSizeXZ.x = teSize.x;
-            if (maxTeSizeXZ.y < teSize.y)
-                maxTeSizeXZ.y = teSize.y;
+            if (maxTeSizeXZ.y < teSize.z)
+                maxTeSizeXZ.y = teSize.z;
 
             foreach (var lc in itd.terrainElementData.teMatricesCellOrder)
             {
-                var key = lc.Key;
+                int3 key = new int3(lc.Key.x, lc.Key.y, lc.Key.z);
                 var val = lc.Value;
                 if (helperDict.ContainsKey(key))
                 {
@@ -82,7 +82,7 @@ public class TerrainManagerData : ScriptableObject
             Vector4 centerExtent = new Vector4(
                 (k.x + 0.5f) * cellSize.x,
                 v.x + (v.y - v.x) / 2f,
-                (k.y + 0.5f) * cellSize.y,
+                (k.z + 0.5f) * cellSize.z,
                 (v.y - v.x) / 2f
                 );
 

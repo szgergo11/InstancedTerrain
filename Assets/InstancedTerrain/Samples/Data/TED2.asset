@@ -16,5 +16,4 @@ MonoBehaviour:
   renderMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
   boundingBoxSize: {x: 1, y: 1, z: 1}
   boundingBoxSizeMultiplier: 1
-  latestCellSize: {x: 30, y: 30}
   changedCellStructure: 0

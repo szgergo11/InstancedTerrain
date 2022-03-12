@@ -21,8 +21,6 @@ public class InstancedTerrainManager : MonoBehaviour
     public GizmoVisibilityMode gizmoMode = GizmoVisibilityMode.Never;
 
 
-    public Camera cam;
-
     public List<InstancedTerrainDrawer> instancedTerrainDrawers;
     public CellCulling cellCulling;
 
@@ -78,7 +76,7 @@ public class InstancedTerrainManager : MonoBehaviour
     }
 
 
-    public Vector4[] GetFrustumPlanes()
+    public static Vector4[] GetFrustumPlanes(Camera cam)
     {
         Vector4[] res = new Vector4[6];
         var planes = GeometryUtility.CalculateFrustumPlanes(cam);
@@ -115,7 +113,7 @@ public class InstancedTerrainManager : MonoBehaviour
         {
             Gizmos.DrawWireCube(
                 cellCulling.CellInf.cellData[(int)intersected[i]],
-                new Vector3(cellCulling.CellInf.cellSize.x, cellCulling.CellInf.cellData[(int)intersected[i]].w * 2f, cellCulling.CellInf.cellSize.y));
+                new Vector3(cellCulling.CellInf.cellSize.x, cellCulling.CellInf.cellData[(int)intersected[i]].w * 2f, cellCulling.CellInf.cellSize.z));
         }
 
         Gizmos.color = Color.green;
@@ -123,7 +121,7 @@ public class InstancedTerrainManager : MonoBehaviour
         {
             Gizmos.DrawWireCube(
                 cellCulling.CellInf.cellData[(int)fullyVisible[i]],
-                new Vector3(cellCulling.CellInf.cellSize.x, cellCulling.CellInf.cellData[(int)fullyVisible[i]].w * 2f, cellCulling.CellInf.cellSize.y));
+                new Vector3(cellCulling.CellInf.cellSize.x, cellCulling.CellInf.cellData[(int)fullyVisible[i]].w * 2f, cellCulling.CellInf.cellSize.z));
         }
     }
 
@@ -150,7 +148,7 @@ public class InstancedTerrainManager : MonoBehaviour
 
         if (generate)
         {
-            Debug.Log("Generating cell data...");
+            Debug.Log("Generating runtime cell data...");
             cellCulling.CellInf.GenerateCellData(instancedTerrainDrawers);
             cellCulling.ReinitializeBuffers();
             foreach (var itd in instancedTerrainDrawers)

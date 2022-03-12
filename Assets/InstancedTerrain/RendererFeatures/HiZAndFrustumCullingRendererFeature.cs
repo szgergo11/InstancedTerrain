@@ -24,7 +24,7 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
         private RenderTargetIdentifier _Source_RTI;
 
         private Material hizBufferMat;
-        private int[] temporaryIDs = null;
+        private int[] temporaryIDs = new int[0];
         private int textSize;
         private int mipCount;
 
@@ -97,6 +97,17 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            // In edit mode: cull for both the game and scene camera separately
+            // In play mode: cull for only the game camera
+            if (
+                (Application.isPlaying && (renderingData.cameraData.cameraType != CameraType.Game))
+                || (!Application.isPlaying && (renderingData.cameraData.cameraType & (CameraType.Game | CameraType.SceneView)) == 0)
+                )
+                return;
+
+            Camera currentCam = renderingData.cameraData.camera;
+            var frustPlanes = InstancedTerrainManager.GetFrustumPlanes(currentCam);
+
             InstancedTerrainManager itm = InstancedTerrainManager.instance;
             if (itm == null || itm.cellCulling.CellInf.cellData.Count == 0)
                 return;
@@ -136,9 +147,9 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
 
             // Cells are shader among itds
             #region Cell Frustum Culling
-            ccBuffer.SetComputeVectorParam(cellFrustumCullingCS, "_CellSize_MaxTeSizeXZ", new Vector4(itm.cellCulling.CellInf.cellSize.x, itm.cellCulling.CellInf.cellSize.y, itm.cellCulling.CellInf.maxTeSizeXZ.x, itm.cellCulling.CellInf.maxTeSizeXZ.y));
+            ccBuffer.SetComputeVectorParam(cellFrustumCullingCS, "_CellSize_MaxTeSizeXZ", new Vector4(itm.cellCulling.CellInf.cellSize.x, itm.cellCulling.CellInf.cellSize.z, itm.cellCulling.CellInf.maxTeSizeXZ.x, itm.cellCulling.CellInf.maxTeSizeXZ.y));
             ccBuffer.SetComputeIntParam(cellFrustumCullingCS, "_CellCount", itm.cellCulling.CellInf.cellData.Count);
-            ccBuffer.SetComputeVectorArrayParam(cellFrustumCullingCS, "_FrustumPlanes", itm.GetFrustumPlanes());
+            ccBuffer.SetComputeVectorArrayParam(cellFrustumCullingCS, "_FrustumPlanes", frustPlanes);
 
             ccBuffer.SetComputeBufferParam(cellFrustumCullingCS, cellFrustum_KernelID, "_CellData", itm.cellCulling.cellDataComputeB);
 
@@ -230,7 +241,7 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
                 #endregion
 
                 #region Intersected Frustum Culling (ArgsBuffer1)
-                ccBuffer.SetComputeVectorArrayParam(intersectedCS, "_FrustumPlanes", itm.GetFrustumPlanes());
+                ccBuffer.SetComputeVectorArrayParam(intersectedCS, "_FrustumPlanes", frustPlanes);
                 ccBuffer.SetComputeVectorParam(intersectedCS, "_TerrainElementBoundsExtents", itd.terrainElementData.MultipliedBoundingBoxExtents);
 
                 ccBuffer.SetComputeBufferParam(intersectedCS, intersected_KernelID, "_CheckRangesCounts_Intersected_FullyVisible", itm.cellCulling.checkRangesCounts_Intersected_FullyVisible_ComputeB);
@@ -269,7 +280,7 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
                 ccBuffer.SetComputeBufferParam(hizCullingCS, hiz_KernelID, "_HiZBufferCullingResultIndexes", itd.hizResultComputeBuffer);
 
                 ccBuffer.SetComputeVectorParam(hizCullingCS, "_TerrainElementBoundsExtents", itd.terrainElementData.MultipliedBoundingBoxExtents);
-                ccBuffer.SetComputeMatrixParam(hizCullingCS, "_VPMatrix", itm.cam.projectionMatrix * itm.cam.worldToCameraMatrix);
+                ccBuffer.SetComputeMatrixParam(hizCullingCS, "_VPMatrix", currentCam.projectionMatrix * currentCam.worldToCameraMatrix);
                 //ccBuffer.SetComputeMatrixParam(hizCullingCS, "_VMatrix", itms[i].cam.worldToCameraMatrix);
                 //ccBuffer.SetComputeFloatParam(hizCullingCS, "_NoCullDistanceBehindObject", itd.drawSettings.noCullDistanceBehindObject);
 
@@ -301,6 +312,7 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
         }
     }
 
+
     private class CustomRenderPassDRAW : ScriptableRenderPass
     {
         private ScriptableRenderer renderer;
@@ -325,6 +337,11 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            // Only render in scene and game cameras
+            if((renderingData.cameraData.cameraType & (CameraType.SceneView | CameraType.Game)) == 0)
+                return;
+
+
             CommandBuffer cBuffer = CommandBufferPool.Get("InstancedTerrain_DRAW");
             InstancedTerrainManager itm = InstancedTerrainManager.instance;
 
@@ -333,22 +350,16 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
             for (int j = 0; j < itds.Count; j++)
             {
                 InstancedTerrainDrawer itd = itds[j];
-                //if (!itd.dispatchComputeShaders)
-                //    continue;
 
                 // Neccessary if the same material is used in different itds
                 itd.SetMaterialBuffers();
+
                 // Add draw command
                 cBuffer.DrawMeshInstancedIndirect(itd.terrainElementData.renderMesh, 0, itd.terrainElementData.material, 0, itd.argsBuffer, 0);
-
-                // Since we can't set material properties through command buffers
+                // Since we can't set material params through command buffers
                 // Schedule cbuffer and prepare for the next draw call
                 context.ExecuteCommandBuffer(cBuffer);
                 cBuffer.Clear();
-
-                //Graphics.DrawMeshInstancedIndirect(itd.terrainElementData.renderMesh, 0, itd.terrainElementData.material, new Bounds(Vector3.zero, Vector3.one * 10000f), itd.argsBuffer, 0);
-                //Matrix4x4 m =  Matrix4x4.identity;
-                //cBuffer.DrawMeshInstanced(itd.terrainElementData.renderMesh, 0, itd.terrainElementData.material, 0, Enumerable.Repeat(m, 60).ToArray(), 60);
             }
 
             #endregion
@@ -368,10 +379,8 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
     public ComputeShader clearArgsBuffers_CS;
     public ComputeShader divideArgsBuffers_CS;
 
-    // Use for scene camera
-    public bool noCull = false;
 
-    private CustomRenderPass renderPass;
+    private CustomRenderPass renderPassCULL;
     private CustomRenderPassDRAW renderPassDRAW;
 
     public override void Create()
@@ -395,8 +404,8 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
 
         Material hizMaterial = new Material(hizBufferGeneration_Shader);
 
-        renderPass = new CustomRenderPass(hizMaterial, hiZCulling_CS, CELLFrustumCulling_CS, createCheckRanges_CS, fullyVisibleCells_CS, intersectedCells_CS, clearArgsBuffers_CS, divideArgsBuffers_CS);
-        renderPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
+        renderPassCULL = new CustomRenderPass(hizMaterial, hiZCulling_CS, CELLFrustumCulling_CS, createCheckRanges_CS, fullyVisibleCells_CS, intersectedCells_CS, clearArgsBuffers_CS, divideArgsBuffers_CS);
+        renderPassCULL.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
 
         renderPassDRAW = new CustomRenderPassDRAW();
         renderPassDRAW.renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
@@ -405,13 +414,10 @@ public class HiZAndFrustumCullingRendererFeature : ScriptableRendererFeature
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
         
-        renderPass.SetSource(renderer);
+        renderPassCULL.SetSource(renderer);
         renderPassDRAW.SetSource(renderer);
 
-
-        if (!noCull)
-            renderer.EnqueuePass(renderPass);
-
+        renderer.EnqueuePass(renderPassCULL);
         renderer.EnqueuePass(renderPassDRAW);
     }
 }

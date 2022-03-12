@@ -32,7 +32,7 @@ public class TerrainElementData : ScriptableObject
     public SDictionary teMatricesCellOrder = new SDictionary();
 
     // Stored for later error messages (like manager's celldata and itds' cellsize isn't matching)
-    public Vector2 CellSize 
+    public Vector3 CellSize 
     { 
         get => latestCellSize; 
     }
@@ -47,10 +47,10 @@ public class TerrainElementData : ScriptableObject
         get => 0.5f * boundingBoxSizeMultiplier * boundingBoxSize;
     }
 
-    [SerializeField]
-    private Vector2 latestCellSize = Vector2.zero;
+    [HideInInspector]
+    private Vector3 latestCellSize = Vector3.zero;
 
-    [SerializeField]
+    [HideInInspector]
     public bool changedCellStructure = false;
 
     /// <summary>
@@ -86,11 +86,13 @@ public class TerrainElementData : ScriptableObject
 
     public void SaveMatrices()
     {
+        Debug.Log("Saved terrain element data matrices");
         File.WriteAllText(JsonPath, JsonUtility.ToJson(teMatricesCellOrder));
     }
 
     public void LoadMatrices()
     {
+        Debug.Log("Loaded terrain element data matrices");
         teMatricesCellOrder = JsonUtility.FromJson<SDictionary>(File.ReadAllText(JsonPath));
     }
 
@@ -101,15 +103,16 @@ public class TerrainElementData : ScriptableObject
 
     public void AddElement(Vector3 position, Quaternion rotation, Vector3 scale)
     {
-        if(latestCellSize == Vector2.zero)
+        if(latestCellSize == Vector3.zero)
         {
             Debug.LogError("CellSize not set. Please set CellSize property before calling AddPosition");
             return;
         }
 
         int x = Mathf.FloorToInt(position.x / CellSize.x);
-        int z = Mathf.FloorToInt(position.z / CellSize.y);
-        int2 key = new int2(x, z);
+        int y = Mathf.FloorToInt(position.y / CellSize.y);
+        int z = Mathf.FloorToInt(position.z / CellSize.z);
+        int3 key = new int3(x, y, z);
         if (teMatricesCellOrder.ContainsKey(key))
         {
             var lc = teMatricesCellOrder[key];
@@ -130,23 +133,24 @@ public class TerrainElementData : ScriptableObject
                 yMax = position.y + boundingBoxSize.y * 0.5f * boundingBoxSizeMultiplier,
                 yMin = position.y - boundingBoxSize.y * 0.5f * boundingBoxSizeMultiplier
             });
-            changedCellStructure = true;
         }
+        changedCellStructure = true;
     }
 
     public void AddElement(Matrix4x4 matrix)
     {
         Vector3 position = new Vector3(matrix[0, 3], matrix[1, 3], matrix[2, 3]);
 
-        if (latestCellSize == Vector2.zero)
+        if (latestCellSize == Vector3.zero)
         {
             Debug.LogError("CellSize not set. Please set CellSize property before calling AddPosition");
             return;
         }
 
         int x = Mathf.FloorToInt(position.x / CellSize.x);
-        int z = Mathf.FloorToInt(position.z / CellSize.y);
-        int2 key = new int2(x, z);
+        int y = Mathf.FloorToInt(position.y / CellSize.y);
+        int z = Mathf.FloorToInt(position.z / CellSize.z);
+        int3 key = new int3(x, y, z);
         if (teMatricesCellOrder.ContainsKey(key))
         {
             var lc = teMatricesCellOrder[key];
@@ -167,11 +171,11 @@ public class TerrainElementData : ScriptableObject
                 yMax = position.y + boundingBoxSize.y * 0.5f * boundingBoxSizeMultiplier,
                 yMin = position.y - boundingBoxSize.y * 0.5f * boundingBoxSizeMultiplier
             });
-            changedCellStructure = true;
         }
+        changedCellStructure = true;
     }
 
-    public void Reorder(Vector2 cellSize)
+    public void Reorder(Vector3 cellSize)
     {
         latestCellSize = cellSize;
 
@@ -192,7 +196,7 @@ public class TerrainElementData : ScriptableObject
 
 
     [System.Serializable]
-    public class SDictionary : SerializableDictionary<int2, LocalCell> { }
+    public class SDictionary : SerializableDictionary<int3, LocalCell> { }
 
     [System.Serializable]
     public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver

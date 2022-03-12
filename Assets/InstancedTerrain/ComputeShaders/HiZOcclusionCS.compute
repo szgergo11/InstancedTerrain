@@ -3,7 +3,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
-
 float4x4 _VPMatrix;
 //float4x4 _VMatrix;
 float3 _TerrainElementBoundsExtents;
